@@ -117,6 +117,8 @@ class PresetManager {
     onCurrentPresetChanged = null;
     onPresetListChanged = null;
 
+    presetsList = [];
+
     constructor(onCurrentPresetChanged, onPresetListChanged) {
         this.onCurrentPresetChanged = onCurrentPresetChanged;
         this.onPresetListChanged = onPresetListChanged;
@@ -131,7 +133,13 @@ class PresetManager {
         this.onCurrentPresetChanged(this.currentPreset);
     }
 
-    savePreset(preset) {
+    savePreset(preset) { // сохранить или обновить
+        this.presetsList.push(preset);
+        this.onPresetListChanged(this.getPresetsList());
+    }
+
+    getPresetsList() {
+        return this.presetsList;
     }
 
     deletePreset(presetId) {}
@@ -225,19 +233,21 @@ class RelayManager {
 }
 
 const CLIENT_ACTIONS = {
+
     SET_TIME: 'SET_TIME',
     SAVE_PRESET_REQ: 'SAVE_PRESET_REQ',
     DELETE_PRESET_REQ: 'DELETE_PRESET_REQ',
+    GET_PRESET_REQ: 'GET_PRESET_REQ',
 
     SET_CONTROL_PANEL_REQ: 'SET_CONTROL_PANEL_REQ',
     SET_CURRENT_PRESET_REQ: 'SET_CURRENT_PRESET_REQ',
-
-    SET_TIMESTAMP_REQ: 'SET_TIMESTAMP_REQ'
+    SET_TIMESTAMP_REQ: 'SET_TIMESTAMP_REQ',
 }
 
 const SERVER_ACTIONS = {
     SAVE_PRESET_RES: 'SAVE_PRESET_RES',
     PRESETS_LIST_CHANGED: 'PRESETS_LIST_CHANGED',
+    GET_PRESET_RES: 'GET_PRESET_RES',
 
     SET_CURRENT_PRESET_RES: 'SET_CURRENT_PRESET_RES',
     CURRENT_PRESET_UPDATED: 'CURRENT_PRESET_UPDATED',
@@ -275,8 +285,9 @@ class HydroponicManager {
             payload: {
                 currentPreset: this.presetManager.getCurrentPreset(),
                 controlPanel: this.controlPanel.getState(),
-                relayManager: this.relayManager.getState(),
+                relaysState: this.relayManager.getState(),
                 timestamp: this.timeManager.getTimestamp(),
+                presetsList: this.presetManager.getPresetsList()
             }
         };
         this.webSocketManager.send(ws, message);
@@ -331,6 +342,15 @@ class HydroponicManager {
                     payload,
                 });
                 break;
+            case CLIENT_ACTIONS.GET_PRESET_REQ:
+                this.webSocketManager.send(ws, { // ?
+                    action: SERVER_ACTIONS.GET_PRESET_RES,
+                    requestId,
+                    payload: {
+                        id: '777', label: "777 7", desc: "7777777", pump: [{on: 12, off: 777}, {on: 7777, off: 77777}], light: [{on: 2, off: 777}], air: [], fan: []
+                    },
+                });
+                break;
             default:
                 return this.webSocketManager.send(ws, {
                     action: 'error',
@@ -381,11 +401,11 @@ class HydroponicManager {
     }
 
     // вызывается каждую минуту для оповещения клиентов
-    onMinuteChanged(secondsOfDay) {
-        console.log("обновление времени", secondsOfDay);
+    onMinuteChanged(timestamp) {
+        console.log("обновление времени", timestamp);
         this.webSocketManager.broadcast({
             action: SERVER_ACTIONS.MINUTE_UPDATE,
-            payload: secondsOfDay, // новый список пресетов
+            payload: {timestamp}, // новый список пресетов
         });
     }
 
@@ -405,7 +425,7 @@ class HydroponicManager {
             this.relayManager.onTimeChange(secondsOfDay, this.presetManager.getCurrentPreset());
         }
         if (secondsOfDay % 60 === 0) {
-            this.onMinuteChanged(secondsOfDay);
+            this.onMinuteChanged(this.timeManager.getTimestamp());
         }
         this.timeManager.addSecondsOfDay();
     }
