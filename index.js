@@ -22,6 +22,7 @@ class TimeManager {
     }
 
     setTimestamp(timestamp) {
+        this.secondsOfDay = timestamp;
         this.onTimestampChanged(timestamp);
     }
 
@@ -128,24 +129,40 @@ class PresetManager {
         return this.currentPreset;
     }
 
-    setCurrentPreset(preset) {
-        this.currentPreset = preset;
+    setCurrentPreset({id}) {
+        if (this.currentPreset?.id === id) {
+            this.currentPreset = null;
+        } else {
+            const preset = this.presetsList.find((p) => p.id === id);
+            this.currentPreset = preset;
+        }
         this.onCurrentPresetChanged(this.currentPreset);
+        this.onPresetListChanged(this.getPresetsList());
     }
 
     savePreset(preset) { // сохранить или обновить
-        if (typeof preset.isActive === "undefined") {
-            preset.isActive = false;
-        }
+        // if (typeof preset.isActive === "undefined") {
+        //     preset.isActive = false;
+        // }
+        const d = new Date();
+        preset.timestamp = Math.floor(d.getTime() / 1000);
         this.presetsList.push(preset);
         this.onPresetListChanged(this.getPresetsList());
     }
 
     getPresetsList() {
-        return this.presetsList.map(({isActive, label, timestamp, id}) => ({isActive, label, timestamp, id}));
+        return this.presetsList.map(({label, timestamp, id}) => ({isActive: id === this.getCurrentPreset()?.id, label, timestamp, id}));
     }
 
-    deletePreset(presetId) {}
+    getPreset({id}) {
+        return this.presetsList.find(({id: idid}) => idid === id);
+    }
+
+    deletePreset({id}) {
+        // проверка на удаление current
+        this.presetsList = this.presetsList.filter(({id: idid}) => id !== idid);
+        this.onPresetListChanged(this.getPresetsList());
+    }
 
     // setCurrentPreset(presetId) {
     //     ;
@@ -201,10 +218,10 @@ class RelayManager {
     }
 
     onPresetControl(secondsOfDay, currentPreset) {
-        const pump = currentPreset.pump.some(({on, off}) => secondsOfDay >= on && secondsOfDay <= off);
-        const light = currentPreset.light.some(({on, off}) => secondsOfDay >= on && secondsOfDay <= off);
-        const air = currentPreset.air.some(({on, off}) => secondsOfDay >= on && secondsOfDay <= off);
-        const fan = currentPreset.fan.some(({on, off}) => secondsOfDay >= on && secondsOfDay <= off);
+        const pump = currentPreset?.pump.some(({on, off}) => secondsOfDay >= on && secondsOfDay <= off);
+        const light = currentPreset?.light.some(({on, off}) => secondsOfDay >= on && secondsOfDay <= off);
+        const air = currentPreset?.air.some(({on, off}) => secondsOfDay >= on && secondsOfDay <= off);
+        const fan = currentPreset?.fan.some(({on, off}) => secondsOfDay >= on && secondsOfDay <= off);
 
         this.setState({ pump, light, air, fan });
     }
@@ -237,7 +254,7 @@ class RelayManager {
 
 const CLIENT_ACTIONS = {
 
-    SET_TIME: 'SET_TIME',
+    // SET_TIME: 'SET_TIME',
     SAVE_PRESET_REQ: 'SAVE_PRESET_REQ',
     DELETE_PRESET_REQ: 'DELETE_PRESET_REQ',
     GET_PRESET_REQ: 'GET_PRESET_REQ',
@@ -349,9 +366,10 @@ class HydroponicManager {
                 this.webSocketManager.send(ws, { // ?
                     action: SERVER_ACTIONS.GET_PRESET_RES,
                     requestId,
-                    payload: {
-                        id: '777', label: "777 7", desc: "7777777", pump: [{on: 12, off: 777}, {on: 7777, off: 77777}], light: [{on: 2, off: 777}], air: [], fan: []
-                    },
+                    payload: this.presetManager.getPreset(payload)
+            // {
+            //             id: '777', label: "777 7", desc: "7777777", pump: [{on: 12, off: 777}, {on: 7777, off: 77777}], light: [{on: 2, off: 777}], air: [], fan: []
+            //         },
                 });
                 break;
             default:
