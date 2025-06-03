@@ -134,12 +134,15 @@ class PresetManager {
     }
 
     savePreset(preset) { // сохранить или обновить
+        if (typeof preset.isActive === "undefined") {
+            preset.isActive = false;
+        }
         this.presetsList.push(preset);
         this.onPresetListChanged(this.getPresetsList());
     }
 
     getPresetsList() {
-        return this.presetsList;
+        return this.presetsList.map(({isActive, label, timestamp, id}) => ({isActive, label, timestamp, id}));
     }
 
     deletePreset(presetId) {}
