@@ -129,7 +129,12 @@ class PresetManager {
         return this.currentPreset;
     }
 
-    setCurrentPreset({id}) {
+    setPresetList(presetsList) {
+        this.presetsList = presetsList;
+        this.onPresetListChanged(this.getPresetsList());
+    }
+
+    setCurrentPreset({id}) { // переименовать в toggle и добавить setCurrentPreset
         if (this.currentPreset?.id === id) {
             this.currentPreset = null;
         } else {
@@ -142,12 +147,20 @@ class PresetManager {
     }
 
     savePreset(preset) { // сохранить или обновить
-        // if (typeof preset.isActive === "undefined") {
-        //     preset.isActive = false;
-        // }
+        const savedPreset = this.getPresetsList().find(({id}) => id === preset?.id);
+        const isNew = !savedPreset;
         preset.timestamp = this.getTimestamp();
-        this.presetsList.push(preset);
-        this.onPresetListChanged(this.getPresetsList());
+        if (isNew) {
+            this.setPresetList([...this.presetsList, preset]);
+        } else {
+            const updated = this.presetsList.map((p) => p.id === preset?.id ? preset : p);
+            this.setPresetList(updated);
+            if (this.getCurrentPreset()?.id === savedPreset?.id) {
+                this.currentPreset = preset;
+                this.currentPreset.activeTimestamp = this.getTimestamp();
+                this.onCurrentPresetChanged(this.getCurrentPreset());
+            }
+        }
     }
 
     getPresetsList() {
@@ -165,8 +178,11 @@ class PresetManager {
 
     deletePreset({id}) {
         // проверка на удаление current
-        this.presetsList = this.presetsList.filter(({id: idid}) => id !== idid);
-        this.onPresetListChanged(this.getPresetsList());
+        if (this.getCurrentPreset()?.id === id) {
+            this.currentPreset = null;
+            this.onCurrentPresetChanged(null);
+        }
+        this.setPresetList(this.presetsList.filter(({id: idid}) => id !== idid));
     }
 
     // setCurrentPreset(presetId) {
