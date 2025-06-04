@@ -135,6 +135,7 @@ class PresetManager {
         } else {
             const preset = this.presetsList.find((p) => p.id === id);
             this.currentPreset = preset;
+            this.currentPreset.activeTimestamp = this.getTimestamp();
         }
         this.onCurrentPresetChanged(this.currentPreset);
         this.onPresetListChanged(this.getPresetsList());
@@ -144,14 +145,18 @@ class PresetManager {
         // if (typeof preset.isActive === "undefined") {
         //     preset.isActive = false;
         // }
-        const d = new Date();
-        preset.timestamp = Math.floor(d.getTime() / 1000);
+        preset.timestamp = this.getTimestamp();
         this.presetsList.push(preset);
         this.onPresetListChanged(this.getPresetsList());
     }
 
     getPresetsList() {
         return this.presetsList.map(({label, timestamp, id}) => ({isActive: id === this.getCurrentPreset()?.id, label, timestamp, id}));
+    }
+
+    getTimestamp() {
+        const d = new Date();
+        return Math.floor(d.getTime() / 1000);
     }
 
     getPreset({id}) {
